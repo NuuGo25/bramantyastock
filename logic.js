@@ -1,7 +1,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.AloPrototypeLogic = api;
+  else root.BramantyaStockLogic = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   function normalizeNote(value, maxLength = 300) {
     return String(value ?? '').trim().slice(0, maxLength);

@@ -1,9 +1,9 @@
-# alo monitoring
+# BramantyaStock
 
 Prototipe monitoring stok strapping band pada tiga gudang: Taman Tekno, Pluit,
 dan Larangan. Dibuat untuk Capstone Project Sistem Informasi Universitas Budi Luhur.
 
-Preview: https://nuugo25.github.io/alo-monitoring/
+Preview: https://nuugo25.github.io/bramantyastock/
 
 ## Fitur
 
@@ -37,4 +37,4 @@ Web Locks. Tidak memerlukan XAMPP, server Node atau database untuk preview ini.
 
 HTML/CSS/JavaScript biasa. JSZip 3.10.1 dimuat saat ekspor, lisensi di vendor/.
 Workbook template dibuat menggunakan artifact-tool pada tahap development.
-Versi UI: `20261017-arsip-1`.
+Versi UI: `20261110-nama-1`.

@@ -1,16 +1,17 @@
-/* alo monitoring — prototipe tampilan (versi 3 gudang).
+/* BramantyaStock — prototipe tampilan (versi 3 gudang).
    Data contoh disimpan di localStorage browser; Excel dibuat saat diminta. Aturan bisnis di sini
    (cek duplikat KF-03, tolak stok minus KF-08, status per gudang KF-05, pindah gudang KF-11)
    jadi acuan implementasi tahap 2-3. */
 (() => {
   'use strict';
 
-  const KUNCI_SIMPAN = 'alo-prototipe-v2';   // v2: stok dipisah per gudang
-  const KUNCI_GUDANG = 'alo-gudang-aktif';
+  const KUNCI_SIMPAN = 'bramantyastock-prototipe-v2';   // v2: stok dipisah per gudang
+  const KUNCI_SIMPAN_LAMA = 'alo-prototipe-v2';          // nama lama, dipindahkan sekali oleh muat()
+  const KUNCI_GUDANG = 'bramantyastock-gudang-aktif';
   const SATUAN = 'gulungan';                 // ASUMSI A1/A10: belum dikonfirmasi mitra ("roll" atau "gulungan")
   const SELISIH_HAMPIR = 5;                  // ASUMSI A2: hampir habis kalau stok <= minimum + 5
   const SEMUA = 'SEMUA';
-  const { normalizeNote, localDateKey, isDateInRange, calendarDays, applyDateSelection, applyTransaction, monthlyReport, transactionEffect, reportExportData, productFingerprint, applyProductAction, productExportData } = window.AloPrototypeLogic;
+  const { normalizeNote, localDateKey, isDateInRange, calendarDays, applyDateSelection, applyTransaction, monthlyReport, transactionEffect, reportExportData, productFingerprint, applyProductAction, productExportData } = window.BramantyaStockLogic;
   const PELAKU_DEMO = 'Staf demo (simulasi)';
   const idPermintaan = () => crypto.randomUUID();
 
@@ -109,8 +110,20 @@
   // Data tersimpan yang bentuknya tidak lengkap dulu membuat layar blank.
   // Sekarang: data rusak disalin ke kunci cadangan, lalu data contoh dimuat dan staf diberi tahu.
   let dataRusak = false;
+  // Nama lama aplikasi (BramantyaStock, sebelum 10 Nov 2026) menyimpan data di kunci lain.
+  // Pindahkan sekali supaya data contoh yang sudah diubah pengunjung tidak hilang.
+  function pindahkanKunciLama() {
+    try {
+      if (localStorage.getItem(KUNCI_SIMPAN) !== null) return;
+      const lama = localStorage.getItem(KUNCI_SIMPAN_LAMA);
+      if (lama === null) return;
+      localStorage.setItem(KUNCI_SIMPAN, lama);
+      localStorage.removeItem(KUNCI_SIMPAN_LAMA);
+    } catch (e) { /* penyimpanan diblokir: muat() memakai data contoh */ }
+  }
   function muat() {
     let raw = null;
+    pindahkanKunciLama();
     try { raw = localStorage.getItem(KUNCI_SIMPAN); } catch (e) { return dataContoh(); }
     if (!raw) return dataContoh();
     try {
@@ -637,6 +650,13 @@
     }
   }
 
+  // true jika dialog ditutup oleh route() karena pindah halaman; tanda langsung dihapus.
+  function pindahHalaman(dlg) {
+    if (!dlg.dataset.pindah) return false;
+    delete dlg.dataset.pindah;
+    return true;
+  }
+
   let produkAksiAktif;
   function bukaProdukAksi(kode, batas = 20) {
     try { state = dataTerbaru(); bangunIndeks(); }
@@ -650,7 +670,7 @@
     const dlg = $('#dlgProdukAksi'), host = $('#produkAksiIsi');
     const requestId = idPermintaan();
     let receipt = '', busy = false;
-    host.innerHTML = `<div class="sheet-head"><div><h2 id="produkAksiJudul" tabindex="-1">${archived ? 'Arsip produk' : tx.length ? 'Unduh rekap sebelum mengarsipkan' : 'Hapus produk'}</h2><p class="small muted">${esc(kode)}</p></div><button type="button" class="icon-btn" data-close aria-label="Tutup produk">&times;</button></div>
+    host.innerHTML = `<div class="sheet-head"><div><h2 id="produkAksiJudul" tabindex="-1">${archived ? 'Arsip produk' : !zero ? 'Produk belum bisa dihapus' : tx.length ? 'Unduh rekap sebelum mengarsipkan' : 'Hapus produk'}</h2><p class="small muted">${esc(kode)}</p></div><button type="button" class="icon-btn" data-close aria-label="Tutup produk">&times;</button></div>
       <div class="sheet-body"><div class="id-line"><strong class="kode">${esc(kode)}</strong>${specHTML(p)}</div>${p.catatan ? `<p class="catatan">Catatan: ${esc(p.catatan)}</p>` : ''}
         <div class="archive-info"><p><strong>Stok seluruh gudang</strong></p><p class="num">${GUDANG.map(g => `${esc(g.nama)}: ${nf.format(barisStok(kode, g.kode)?.jumlah || 0)}`).join(' · ')} ${SATUAN}</p>
         <p>${archived ? `Diarsipkan ${esc(waktuLengkap(p.diarsipkan))} oleh ${esc(p.pengarsip)}. Pulihkan untuk mencatat atau mengoreksi transaksi pada produk yang sama.` : !zero ? 'Produk belum bisa dihapus atau diarsipkan. Stok harus nol di ketiga gudang. Selesaikan pencatatan barang sesuai kondisi fisik terlebih dahulu.' : tx.length ? 'Riwayat produk tetap tersimpan setelah diarsipkan. Unduh rekap seluruh periode terlebih dahulu, lalu pilih Arsipkan.' : 'Produk ini belum pernah mempunyai transaksi. Penghapusan bersifat permanen.'}</p></div>
@@ -696,6 +716,7 @@
   }
 
   $('#dlgProdukAksi').addEventListener('close', () => {
+    if (pindahHalaman($('#dlgProdukAksi'))) return;
     const trigger = $$('[data-product]').find(b => b.dataset.product === produkAksiAktif) || $('#produkMode');
     trigger?.focus({ preventScroll: true });
   });
@@ -1172,7 +1193,8 @@
         <thead><tr><th scope="col">Produk</th><th scope="col">Gudang</th>${['Stok awal', 'Masuk', 'Pindah masuk', 'Keluar customer', 'Pindah keluar', 'Stok akhir'].map(s => `<th scope="col" class="r">${s}</th>`).join('')}</tr></thead>
         <tbody>${rows.slice(0, batasLaporan).map(r => `<tr><td data-label="Produk"><span class="kode">${esc(r.kode)}</span><p class="small muted">${esc(specTeks(cariProduk(r.kode)))}</p></td><td data-label="Gudang">${tagGudang(r.gudang)}</td>${[['awal', 'Stok awal'], ['masuk', 'Masuk'], ['pindahMasuk', 'Pindah masuk'], ['keluar', 'Keluar customer'], ['pindahKeluar', 'Pindah keluar'], ['akhir', 'Stok akhir']].map(([k, label]) => `<td class="r num" data-label="${label}">${saldo(r[k])}</td>`).join('')}</tr>`).join('')}</tbody>
         </table></div>${tombolTampilLagi(Math.min(batasLaporan, rows.length), rows.length, 'rekapLagi')}` : '<div class="empty-state compact"><h3>Tidak ada rekap di pilihan ini</h3><p>Ubah bulan, gudang, atau pencarian. Gunakan Reset filter untuk kembali ke bulan ini dan semua gudang.</p></div>';
-      $('#laporanJumlah').textContent = `${tx.length} transaksi`;
+      const txBatal = tx.filter(t => t.status === 'dibatalkan').length;
+      $('#laporanJumlah').textContent = `${tx.length} transaksi${txBatal ? ` (${txBatal} dibatalkan)` : ''}`;
       $('#laporanTransaksi').innerHTML = tx.length ? `<div class="table-wrap"><table class="data report-transactions">
         <thead><tr><th scope="col">Tanggal / jam</th><th scope="col">Produk</th><th scope="col">Jenis / gudang</th><th scope="col" class="r">Jumlah</th><th scope="col">Status</th><th scope="col">Detail</th></tr></thead>
         <tbody>${tx.slice(0, batasLaporan).map(t => `<tr>
@@ -1281,11 +1303,13 @@
   }
 
   $('#dlgDetail').addEventListener('close', () => {
+    if (pindahHalaman($('#dlgDetail'))) return;
     const trigger = $(`[data-detail="${detailAktif}"]`) || $('#laporanTambah');
     if (trigger) trigger.focus({ preventScroll: true });
   });
   $('#dlgLaporanForm').addEventListener('close', () => {
     $('#laporanFormIsi').innerHTML = '';
+    if (pindahHalaman($('#dlgLaporanForm'))) return;
     $('#laporanTambah')?.focus({ preventScroll: true });
   });
   [$('#dlgDetail'), $('#dlgLaporanForm'), $('#dlgProdukAksi')].forEach(dlg => dlg.addEventListener('keydown', e => {
@@ -1480,8 +1504,9 @@
       const totMasuk = aktif.filter((t) => arahTransaksi(t).tanda === '+').reduce((s, t) => s + t.jumlah, 0);
       const totKeluar = aktif.filter((t) => arahTransaksi(t).tanda === '−').reduce((s, t) => s + t.jumlah, 0);
       const jPindah = aktif.filter((t) => t.jenis === 'pindah').length;
+      const jBatal = hasil.length - aktif.length;
       $('#rRingkas').textContent = hasil.length
-        ? `${hasil.length} transaksi: ${nf.format(totMasuk)} ${SATUAN} masuk, ${nf.format(totKeluar)} ${SATUAN} keluar${jPindah ? `, termasuk ${jPindah} pindah gudang` : ''}.`
+        ? `${hasil.length} transaksi${jBatal ? ` (${jBatal} dibatalkan)` : ''}: ${nf.format(totMasuk)} ${SATUAN} masuk, ${nf.format(totKeluar)} ${SATUAN} keluar${jPindah ? `, termasuk ${jPindah} pindah gudang` : ''}.`
         : 'Tidak ada transaksi di pilihan ini.';
 
       const wadah = $('#rIsi');
@@ -1591,6 +1616,9 @@
 
   function route() {
     bersihkanKalender();
+    // Panel/dialog milik halaman lama ditutup saat pindah halaman (BUG-UI-06).
+    // Tanda data-pindah mencegah handler 'close' memindahkan fokus dari judul halaman baru.
+    $$('dialog[open]').forEach((d) => { d.dataset.pindah = '1'; d.close(); });
     const [jalur, qs] = location.hash.replace(/^#\/?/, '').split('?');
     const nama = VIEWS[jalur] ? jalur : 'dashboard';
     VIEWS[nama]($('#view'), new URLSearchParams(qs || ''));
@@ -1598,7 +1626,7 @@
       if (a.dataset.nav === nama) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
-    document.title = `${JUDUL[nama]} – alo monitoring (prototipe)`;
+    document.title = `${JUDUL[nama]} – BramantyaStock (prototipe)`;
     if (!renderPertama) {
       window.scrollTo(0, 0);
       const h1 = $('#view h1');

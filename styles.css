@@ -1,4 +1,4 @@
-/* alo monitoring — prototipe tampilan
+/* BramantyaStock — prototipe tampilan
    Warna utama "biru karbon" diambil dari tinta salinan surat jalan yang dipakai mitra sebelum ada sistem.
    Merah/kuning/hijau hanya untuk status stok, selalu disertai teks. */
 
@@ -486,6 +486,8 @@ dialog.modal { width: min(480px, calc(100% - 32px)); border-radius: var(--r-l); 
 
 @media (max-width: 420px) {
   .form-grid { grid-template-columns: minmax(0, 1fr); }
+  /* Nama BramantyaStock lebih panjang dari nama lama: kecilkan logo di HP agar pilihan gudang tidak terpotong. */
+  .topbar .brand-mark { font-size: 1.15rem; }
   .calendar-popover { left: 50%; width: calc(100vw - 24px); padding: 10px; transform: translateX(-50%); }
 }
 

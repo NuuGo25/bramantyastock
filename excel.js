@@ -95,12 +95,12 @@ export async function createExcel(data) {
     const now = wib(new Date());
     const stocks = data.stok.map(s => `${gudang[s.gudang]}: ${s.jumlah}`).join(' · ');
     await fill(zip, 1, details(data.transaksi), { A3: now, C3: data.kode, F3: 'Seluruh periode · waktu WIB', A5: `${data.produk.status === 'arsip' ? 'Arsip' : 'Aktif'} · Stok saat unduh (gulungan): ${stocks}` });
-    filename = `alo-rekap-${data.kode}-${now.toISOString().slice(0, 10)}.xlsx`;
+    filename = `bramantyastock-rekap-${data.kode}-${now.toISOString().slice(0, 10)}.xlsx`;
   } else {
     const meta = { A3: new Date(`${data.month}-01T00:00:00Z`), C3: gudang[data.gudang], F3: `Pencarian: ${data.search || 'Semua produk'}` };
     await fill(zip, 1, data.rekap.map(r => [...spec(r.produk), gudang[r.gudang], r.awal ?? 'Belum tersedia', r.masuk, r.pindahMasuk, r.keluar, r.pindahKeluar, r.akhir ?? 'Belum tersedia']), meta, true);
     await fill(zip, 2, details(data.transaksi), meta);
-    filename = `alo-laporan-${data.month}-${data.gudang.toLowerCase()}.xlsx`;
+    filename = `bramantyastock-laporan-${data.month}-${data.gudang.toLowerCase()}.xlsx`;
   }
   return { blob: await zip.generateAsync({ type: 'blob', mimeType: mime, compression: 'DEFLATE' }), filename };
 }
